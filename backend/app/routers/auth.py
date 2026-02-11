@@ -31,7 +31,7 @@ async def signup(request: SignupRequest) -> Dict[str, Any]:
     """
     try:
         # Create user in Supabase
-        result = await supabase_client.create_user(request.email, request.password)
+        result = supabase_client.create_user(request.email, request.password)
         
         user = result["user"]
         session = result["session"]
@@ -50,20 +50,37 @@ async def signup(request: SignupRequest) -> Dict[str, Any]:
             user_id=user.id,
             email=user.email,
         )
+    except HTTPException:
+        raise
     except Exception as e:
         error_msg = str(e)
         logger.error(f"Signup error: {error_msg}")
         
-        # Check for specific error messages
+        # Map specific Supabase errors to user-friendly messages
         if "already registered" in error_msg.lower():
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
                 detail="Email already registered",
             )
+        elif "password" in error_msg.lower() and "weak" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Password is too weak. Use at least 8 characters with uppercase, lowercase, numbers, and special characters",
+            )
+        elif "too many requests" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many signup attempts. Please try again later",
+            )
+        elif "invalid email" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Invalid email address",
+            )
         
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Failed to create user account",
+            detail=error_msg if error_msg else "Failed to create user account",
         )
 
 
@@ -78,31 +95,73 @@ async def login(request: LoginRequest) -> Dict[str, Any]:
     Returns authentication token and user information.
     """
     try:
+        logger.info(f"[LOGIN] Login request received for email: {request.email}")
+        
         # Authenticate user
-        result = await supabase_client.authenticate_user(request.email, request.password)
+        result = supabase_client.authenticate_user(request.email, request.password)
+        
+        logger.info(f"[LOGIN] Authentication result received")
+        logger.info(f"[LOGIN] Result keys: {result.keys()}")
         
         user = result["user"]
         session = result["session"]
         
-        if not session or not session.access_token:
+        logger.info(f"[LOGIN] User: {user}")
+        logger.info(f"[LOGIN] Session: {session}")
+        logger.info(f"[LOGIN] Session type: {type(session)}")
+        
+        if not session:
+            logger.error(f"[LOGIN] Session is None for user {request.email}")
             raise HTTPException(
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid email or password",
             )
         
-        logger.info(f"User login successful: {request.email}")
+        if not session.access_token:
+            logger.error(f"[LOGIN] No access_token in session for user {request.email}")
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
         
-        return AuthResponse(
+        logger.info(f"[LOGIN] Access token obtained, length: {len(session.access_token)}")
+        logger.info(f"[LOGIN] User login successful: {request.email}")
+        
+        response = AuthResponse(
             access_token=session.access_token,
             token_type="bearer",
             user_id=user.id,
             email=user.email,
         )
+        
+        logger.info(f"[LOGIN] Returning AuthResponse: {response}")
+        
+        return response
     except HTTPException:
         raise
     except Exception as e:
         error_msg = str(e)
-        logger.error(f"Login error: {error_msg}")
+        logger.error(f"[LOGIN] Login error: {error_msg}")
+        logger.error(f"[LOGIN] Error type: {type(e)}")
+        import traceback
+        logger.error(f"[LOGIN] Traceback: {traceback.format_exc()}")
+        
+        # Map specific Supabase errors to user-friendly messages
+        if "invalid login credentials" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_401_UNAUTHORIZED,
+                detail="Invalid email or password",
+            )
+        elif "too many requests" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail="Too many login attempts. Please try again later",
+            )
+        elif "email not confirmed" in error_msg.lower():
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Email not confirmed. Please check your email",
+            )
         
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

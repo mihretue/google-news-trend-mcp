@@ -17,7 +17,7 @@ class SupabaseClient:
             settings.supabase_key,  # This should be the service role key
         )
 
-    async def create_user(self, email: str, password: str) -> Dict[str, Any]:
+    def create_user(self, email: str, password: str) -> Dict[str, Any]:
         """Create a new user in Supabase Auth."""
         try:
             response = self.client.auth.sign_up({
@@ -33,23 +33,49 @@ class SupabaseClient:
             logger.error(f"Error creating user: {str(e)}")
             raise
 
-    async def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
+    def authenticate_user(self, email: str, password: str) -> Dict[str, Any]:
         """Authenticate user with email and password."""
         try:
+            logger.info(f"[AUTH] Starting authentication for email: {email}")
+            
             response = self.client.auth.sign_in_with_password({
                 "email": email,
                 "password": password,
             })
+            
+            logger.info(f"[AUTH] Response received from Supabase")
+            logger.info(f"[AUTH] Response type: {type(response)}")
+            
+            user = response.user
+            session = response.session
+            
+            logger.info(f"[AUTH] User object: {user}")
+            logger.info(f"[AUTH] User ID: {user.id if user else 'None'}")
+            logger.info(f"[AUTH] Session object: {session}")
+            logger.info(f"[AUTH] Session type: {type(session)}")
+            
+            if session:
+                logger.info(f"[AUTH] Session access_token exists: {bool(session.access_token)}")
+                logger.info(f"[AUTH] Session token_type: {session.token_type}")
+            else:
+                logger.warning(f"[AUTH] Session is None!")
+            
             logger.info(f"User authenticated: {email}")
-            return {
-                "user": response.user,
-                "session": response.session,
+            
+            result = {
+                "user": user,
+                "session": session,
             }
+            
+            return result
         except Exception as e:
-            logger.error(f"Error authenticating user: {str(e)}")
+            logger.error(f"[AUTH] Error authenticating user: {str(e)}")
+            logger.error(f"[AUTH] Error type: {type(e)}")
+            import traceback
+            logger.error(f"[AUTH] Traceback: {traceback.format_exc()}")
             raise
 
-    async def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
+    def get_user(self, user_id: str) -> Optional[Dict[str, Any]]:
         """Get user by ID."""
         try:
             response = self.client.auth.admin.get_user(user_id)
@@ -58,7 +84,7 @@ class SupabaseClient:
             logger.error(f"Error getting user: {str(e)}")
             return None
 
-    async def create_conversation(
+    def create_conversation(
         self, user_id: str, title: str
     ) -> Dict[str, Any]:
         """Create a new conversation."""
@@ -73,7 +99,7 @@ class SupabaseClient:
             logger.error(f"Error creating conversation: {str(e)}")
             raise
 
-    async def get_conversations(self, user_id: str) -> List[Dict[str, Any]]:
+    def get_conversations(self, user_id: str) -> List[Dict[str, Any]]:
         """Get all conversations for a user."""
         try:
             response = self.client.table("conversations").select("*").eq(
@@ -84,7 +110,7 @@ class SupabaseClient:
             logger.error(f"Error getting conversations: {str(e)}")
             return []
 
-    async def get_conversation(
+    def get_conversation(
         self, conversation_id: str, user_id: str
     ) -> Optional[Dict[str, Any]]:
         """Get a specific conversation."""
@@ -97,7 +123,7 @@ class SupabaseClient:
             logger.error(f"Error getting conversation: {str(e)}")
             return None
 
-    async def save_message(
+    def save_message(
         self,
         conversation_id: str,
         user_id: str,
@@ -120,7 +146,7 @@ class SupabaseClient:
             logger.error(f"Error saving message: {str(e)}")
             raise
 
-    async def get_messages(
+    def get_messages(
         self, conversation_id: str, user_id: str, limit: int = 50
     ) -> List[Dict[str, Any]]:
         """Get messages for a conversation."""
@@ -135,7 +161,7 @@ class SupabaseClient:
             logger.error(f"Error getting messages: {str(e)}")
             return []
 
-    async def get_recent_messages(
+    def get_recent_messages(
         self, conversation_id: str, user_id: str, limit: int = 10
     ) -> List[Dict[str, Any]]:
         """Get recent messages for a conversation (for agent context)."""

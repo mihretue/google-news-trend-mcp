@@ -34,7 +34,7 @@ async def create_conversation(
     try:
         user_id = get_user_id(req)
         
-        conversation = await supabase_client.create_conversation(
+        conversation = supabase_client.create_conversation(
             user_id=user_id,
             title=request.title,
         )
@@ -45,7 +45,7 @@ async def create_conversation(
     except HTTPException:
         raise
     except Exception as e:
-        logger.error(f"Error creating conversation: {str(e)}")
+        logger.error(f"Error creating conversation: {str(e)}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create conversation",
@@ -62,7 +62,7 @@ async def list_conversations(req: Request) -> Dict[str, Any]:
     try:
         user_id = get_user_id(req)
         
-        conversations = await supabase_client.get_conversations(user_id)
+        conversations = supabase_client.get_conversations(user_id)
         
         return {
             "conversations": conversations,
@@ -94,7 +94,7 @@ async def get_messages(
         user_id = get_user_id(req)
         
         # Verify user owns this conversation
-        conversation = await supabase_client.get_conversation(
+        conversation = supabase_client.get_conversation(
             conversation_id, user_id
         )
         if not conversation:
@@ -103,7 +103,7 @@ async def get_messages(
                 detail="Conversation not found",
             )
         
-        messages = await supabase_client.get_messages(
+        messages = supabase_client.get_messages(
             conversation_id, user_id
         )
         
@@ -140,7 +140,7 @@ async def send_message(
         request_id = getattr(req.state, "request_id", "unknown")
         
         # Verify conversation exists and belongs to user
-        conversation = await supabase_client.get_conversation(
+        conversation = supabase_client.get_conversation(
             request.conversation_id, user_id
         )
         if not conversation:
@@ -150,7 +150,7 @@ async def send_message(
             )
         
         # Save user message
-        await supabase_client.save_message(
+        supabase_client.save_message(
             conversation_id=request.conversation_id,
             user_id=user_id,
             role="user",
@@ -162,7 +162,7 @@ async def send_message(
         )
         
         # Create SSE stream
-        async def event_generator() -> AsyncGenerator[str, None]:
+        async def event_generator():
             """Generate SSE events."""
             try:
                 # Process message with agent

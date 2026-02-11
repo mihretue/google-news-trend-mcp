@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings
 from pydantic import field_validator
-from typing import List
+from typing import List, Optional
 
 
 class Settings(BaseSettings):
@@ -14,8 +14,11 @@ class Settings(BaseSettings):
     # Tavily Configuration
     tavily_api_key: str
     
-    # OpenAI Configuration
-    openai_api_key: str
+    # OpenAI Configuration (optional, for backward compatibility)
+    openai_api_key: Optional[str] = None
+    
+    # Groq Configuration (free AI API)
+    groq_api_key: Optional[str] = None
     
     # Backend Configuration
     environment: str = "production"

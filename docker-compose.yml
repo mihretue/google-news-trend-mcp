@@ -54,6 +54,9 @@ services:
     ports:
       - "5000:5000"
     environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - SUPABASE_JWT_SECRET=${SUPABASE_JWT_SECRET}
       - ENVIRONMENT=production
     networks:
       - chatbot-network

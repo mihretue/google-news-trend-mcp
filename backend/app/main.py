@@ -23,7 +23,10 @@ app = FastAPI(
     version="1.0.0",
 )
 
-# Configure CORS
+# Add authentication middleware (must be added BEFORE CORS so it runs after CORS)
+app.add_middleware(AuthMiddleware)
+
+# Configure CORS (added after auth so it runs first in the middleware stack)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.cors_origins,
@@ -32,9 +35,6 @@ app.add_middleware(
     allow_headers=["*"],
     expose_headers=["*"],
 )
-
-# Add authentication middleware (temporarily disabled for testing)
-# app.add_middleware(AuthMiddleware)
 
 
 # Request logging middleware

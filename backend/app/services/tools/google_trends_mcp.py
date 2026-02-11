@@ -4,6 +4,8 @@ import logging
 from typing import Dict, Any, Optional
 import asyncio
 import json
+from jose import jwt
+import os
 
 logger = logging.getLogger(__name__)
 
@@ -15,6 +17,25 @@ class GoogleTrendsMCPTool:
         """Initialize MCP client."""
         self.mcp_url = settings.mcp_url
         self.timeout = settings.mcp_timeout
+        self.jwt_secret = settings.supabase_jwt_secret
+
+    def _create_mcp_token(self) -> str:
+        """
+        Create a JWT token for MCP authorization.
+        
+        Returns:
+            JWT token string
+        """
+        try:
+            payload = {
+                "sub": "backend-service",
+                "iat": int(__import__('time').time()),
+            }
+            token = jwt.encode(payload, self.jwt_secret, algorithm="HS256")
+            return token
+        except Exception as e:
+            logger.error(f"Failed to create MCP token: {str(e)}")
+            return ""
 
     async def get_trending_terms(self, geo: str = "US") -> Dict[str, Any]:
         """
@@ -29,8 +50,17 @@ class GoogleTrendsMCPTool:
         try:
             logger.info(f"Fetching trending terms for geo={geo}")
             
+            # Create authorization token
+            token = self._create_mcp_token()
+            if not token:
+                return {
+                    "success": False,
+                    "error": "Failed to create authorization token",
+                    "trends": [],
+                }
+            
             async with httpx.AsyncClient(timeout=self.timeout) as client:
-                # Call MCP tool via HTTP
+                # Call MCP tool via HTTP with authorization
                 endpoint = f"{self.mcp_url}/mcp/tools/call"
                 payload = {
                     "name": "get_trending_terms",
@@ -40,7 +70,12 @@ class GoogleTrendsMCPTool:
                     }
                 }
                 
-                response = await client.post(endpoint, json=payload)
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                }
+                
+                response = await client.post(endpoint, json=payload, headers=headers)
                 response.raise_for_status()
                 
                 data = response.json()
@@ -91,6 +126,15 @@ class GoogleTrendsMCPTool:
         try:
             logger.info(f"Fetching news for keyword={keyword}")
             
+            # Create authorization token
+            token = self._create_mcp_token()
+            if not token:
+                return {
+                    "success": False,
+                    "error": "Failed to create authorization token",
+                    "articles": [],
+                }
+            
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 endpoint = f"{self.mcp_url}/mcp/tools/call"
                 payload = {
@@ -103,7 +147,12 @@ class GoogleTrendsMCPTool:
                     }
                 }
                 
-                response = await client.post(endpoint, json=payload)
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                    "Content-Type": "application/json",
+                }
+                
+                response = await client.post(endpoint, json=payload, headers=headers)
                 response.raise_for_status()
                 
                 data = response.json()
@@ -195,8 +244,17 @@ class GoogleTrendsMCPTool:
             True if healthy, False otherwise
         """
         try:
+            # Create authorization token
+            token = self._create_mcp_token()
+            if not token:
+                logger.warning("Failed to create authorization token for health check")
+                return False
+            
             async with httpx.AsyncClient(timeout=5.0) as client:
-                response = await client.get(f"{self.mcp_url}/healthz")
+                headers = {
+                    "Authorization": f"Bearer {token}",
+                }
+                response = await client.get(f"{self.mcp_url}/health", headers=headers)
                 return response.status_code == 200
         except Exception as e:
             logger.warning(f"MCP health check failed: {str(e)}")

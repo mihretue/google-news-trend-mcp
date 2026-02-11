@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
-import { API_ENDPOINTS } from '../api/config';
+import { chatClient } from '../api/chatClient';
 import { logger } from '../utils/logger';
 import '../styles/auth.css';
 
@@ -20,22 +19,24 @@ const Login: React.FC = () => {
     try {
       logger.info('Attempting login');
 
-      const response = await axios.post(API_ENDPOINTS.login, {
-        email,
-        password,
-      });
+      const response = await chatClient.login(email, password);
 
-      const { access_token, user_id } = response.data;
+      const { user_id } = response;
 
-      // Store token
-      localStorage.setItem('auth_token', access_token);
+      // Store user_id (token is already stored by chatClient.login)
       localStorage.setItem('user_id', user_id);
 
       logger.info('Login successful');
       navigate('/chat');
     } catch (err: any) {
-      const errorMessage =
-        err.response?.data?.detail || 'Login failed. Please try again.';
+      let errorMessage = 'Login failed. Please try again.';
+      
+      if (err.response?.data?.detail) {
+        errorMessage = err.response.data.detail;
+      } else if (err.message) {
+        errorMessage = err.message;
+      }
+      
       setError(errorMessage);
       logger.error('Login error', errorMessage);
     } finally {

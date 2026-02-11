@@ -17,8 +17,12 @@ class ChatClient {
     this.client.interceptors.request.use(
       (config) => {
         const token = this.getToken();
+        logger.info(`[Interceptor] Token from storage: ${token ? token.substring(0, 20) + '...' : 'null'}`);
         if (token) {
           config.headers.Authorization = `Bearer ${token}`;
+          logger.info(`[Interceptor] Authorization header set for ${config.url}`);
+        } else {
+          logger.warn(`[Interceptor] No token found for ${config.url}`);
         }
         return config;
       },
@@ -68,14 +72,32 @@ class ChatClient {
 
   async login(email: string, password: string): Promise<any> {
     try {
+      logger.info('ChatClient: Sending login request');
       const response = await this.client.post(API_ENDPOINTS.login, {
         email,
         password,
       });
+      logger.info('ChatClient: Login response received', response);
+      logger.info('ChatClient: Response data', response.data);
+      logger.info('ChatClient: Response status', response.status);
+      
+      if (!response.data) {
+        logger.error('ChatClient: Response data is empty');
+        throw new Error('Empty response from server');
+      }
+      
+      if (!response.data.access_token) {
+        logger.error('ChatClient: No access_token in response', response.data);
+        throw new Error('No access token in response');
+      }
+      
+      logger.info('ChatClient: Setting token');
       this.setToken(response.data.access_token);
+      logger.info('ChatClient: Token set successfully');
+      
       return response.data;
     } catch (error) {
-      logger.error('Login failed', error);
+      logger.error('ChatClient: Login failed', error);
       throw error;
     }
   }
@@ -130,49 +152,19 @@ class ChatClient {
     content: string,
     onToken: (token: string) => void,
     onToolActivity: (tool: string, status: string) => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
+    onLoading?: (status: string) => void
   ): Promise<void> {
     try {
-      const eventSource = new EventSource(
-        `${API_URL}/chat/message?conversation_id=${conversationId}&content=${encodeURIComponent(content)}`,
-        {
-          withCredentials: true,
-        }
+      // Use fetch-based SSE connection with proper Authorization header
+      await this.sendMessageWithFetch(
+        conversationId,
+        content,
+        onToken,
+        onToolActivity,
+        onError,
+        onLoading
       );
-
-      // Inject token manually since EventSource doesn't support headers
-      const token = this.getToken();
-      if (token) {
-        // Create a custom fetch-based SSE connection instead
-        this.sendMessageWithFetch(
-          conversationId,
-          content,
-          onToken,
-          onToolActivity,
-          onError
-        );
-        return;
-      }
-
-      eventSource.addEventListener('token', (event: any) => {
-        const data = JSON.parse(event.data);
-        onToken(data.token);
-      });
-
-      eventSource.addEventListener('tool_activity', (event: any) => {
-        const data = JSON.parse(event.data);
-        onToolActivity(data.tool, data.status);
-      });
-
-      eventSource.addEventListener('error', (event: any) => {
-        const data = JSON.parse(event.data);
-        onError(data.error);
-        eventSource.close();
-      });
-
-      eventSource.addEventListener('done', () => {
-        eventSource.close();
-      });
     } catch (error) {
       logger.error('Failed to send message', error);
       onError('Failed to send message');
@@ -184,10 +176,13 @@ class ChatClient {
     content: string,
     onToken: (token: string) => void,
     onToolActivity: (tool: string, status: string) => void,
-    onError: (error: string) => void
+    onError: (error: string) => void,
+    onLoading?: (status: string) => void
   ): Promise<void> {
     try {
       const token = this.getToken();
+      logger.info(`[SSE] Sending message with token: ${token ? token.substring(0, 20) + '...' : 'null'}`);
+      
       const response = await fetch(API_ENDPOINTS.sendMessage, {
         method: 'POST',
         headers: {
@@ -200,11 +195,16 @@ class ChatClient {
         }),
       });
 
+      logger.info(`[SSE] Response status: ${response.status}`);
+
       if (!response.ok) {
         if (response.status === 401) {
+          logger.warn('[SSE] Unauthorized - clearing token and redirecting to login');
           this.clearToken();
           window.location.href = '/login';
         }
+        const errorText = await response.text();
+        logger.error(`[SSE] HTTP error! status: ${response.status}, body: ${errorText}`);
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
@@ -226,28 +226,51 @@ class ChatClient {
         // Keep the last incomplete line in the buffer
         buffer = lines.pop() || '';
 
-        for (const line of lines) {
+        let i = 0;
+        while (i < lines.length) {
+          const line = lines[i];
+          
           if (line.startsWith('event:')) {
             const eventType = line.substring(6).trim();
-            const dataLine = lines.shift();
+            i++;
+            
+            // Look for the data line
+            if (i < lines.length && lines[i].startsWith('data:')) {
+              const dataStr = lines[i].substring(5).trim();
+              try {
+                const data = JSON.parse(dataStr);
 
-            if (dataLine?.startsWith('data:')) {
-              const dataStr = dataLine.substring(5).trim();
-              const data = JSON.parse(dataStr);
-
-              if (eventType === 'token') {
-                onToken(data.token);
-              } else if (eventType === 'tool_activity') {
-                onToolActivity(data.tool, data.status);
-              } else if (eventType === 'error') {
-                onError(data.error);
+                if (eventType === 'token') {
+                  onToken(data.token);
+                } else if (eventType === 'loading') {
+                  logger.info(`[SSE] Loading: ${data.status}`);
+                  if (onLoading) onLoading(data.status);
+                } else if (eventType === 'responding') {
+                  logger.info(`[SSE] Responding: ${data.status}`);
+                  if (onLoading) onLoading(data.status);
+                } else if (eventType === 'streaming') {
+                  logger.info(`[SSE] Streaming: ${data.status}`);
+                  if (onLoading) onLoading(data.status);
+                } else if (eventType === 'tool_activity') {
+                  onToolActivity(data.tool, data.status);
+                } else if (eventType === 'error') {
+                  onError(data.error);
+                } else if (eventType === 'done') {
+                  logger.info('[SSE] Message complete');
+                  if (onLoading) onLoading('');
+                }
+              } catch (parseError) {
+                logger.error(`[SSE] Failed to parse data: ${dataStr}`, parseError);
               }
+              i++;
             }
+          } else {
+            i++;
           }
         }
       }
     } catch (error) {
-      logger.error('SSE connection error', error);
+      logger.error('[SSE] Connection error', error);
       onError('Connection error');
     }
   }

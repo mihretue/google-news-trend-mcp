@@ -24,6 +24,7 @@ dependencies = [
     "trendspy>=0.1.6",
     "uvicorn>=0.30.0",
     "PyJWT>=2.8.0",
+    "python-jose>=3.3.0",
     # Chatbot dependencies
     "supabase>=2.3.5",
     "langchain>=0.1.0",

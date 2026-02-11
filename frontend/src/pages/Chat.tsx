@@ -18,6 +18,7 @@ const Chat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingStatus, setLoadingStatus] = useState('');
   const [toolActivity, setToolActivity] = useState<string>('');
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -120,6 +121,10 @@ const Chat: React.FC = () => {
         (error: string) => {
           setError(error);
           setToolActivity('');
+          setLoadingStatus('');
+        },
+        (status: string) => {
+          setLoadingStatus(status);
         }
       );
 
@@ -139,6 +144,7 @@ const Chat: React.FC = () => {
       await chatClient.logout();
       navigate('/login');
     } catch (err) {
+      console.log("error 1 ",err)
       logger.error('Logout failed', err);
       navigate('/login');
     }
@@ -163,29 +169,38 @@ const Chat: React.FC = () => {
             <MessageComponent key={message.id} message={message} />
           ))
         )}
-        {toolActivity && <div className="tool-activity">{toolActivity}</div>}
+        {loadingStatus && <div className="loading-status">⏳ {loadingStatus}</div>}
+        {toolActivity && <div className="tool-activity">🔧 {toolActivity}</div>}
         <div ref={messagesEndRef} />
       </div>
 
       {error && <div className="error-banner">{error}</div>}
 
       <form onSubmit={handleSendMessage} className="chat-input-form">
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Type your message..."
-          disabled={loading || !conversationId}
-          className="chat-input"
+  <div className="chat-input-wrapper">
+    <input
+      type="text"
+      value={input}
+      onChange={(e) => setInput(e.target.value)}
+      placeholder="Type your message..."
+      disabled={loading || !conversationId}
+      className="chat-input"
+    />
+    <button
+      type="submit"
+      disabled={loading || !conversationId || !input.trim()}
+      className="send-button"
+      aria-label="Send message"
+    >
+      <svg viewBox="0 0 24 24" width="18" height="18">
+        <path
+          fill="currentColor"
+          d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"
         />
-        <button
-          type="submit"
-          disabled={loading || !conversationId || !input.trim()}
-          className="send-button"
-        >
-          {loading ? 'Sending...' : 'Send'}
-        </button>
-      </form>
+      </svg>
+    </button>
+  </div>
+</form>
     </div>
   );
 };

@@ -4,22 +4,21 @@ from fastapi.responses import PlainTextResponse
 import logging
 
 from mcp_server import mcp_http_app
-from chatbot_routers import auth_router, chat_router, health_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 app = FastAPI(
-    title="Google News Trends MCP + Chatbot",
-    description="MCP server with integrated chatbot for news and trends",
+    title="Google News Trends MCP",
+    description="MCP server for Google News and Trends",
     version="1.0.0",
 )
 
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://frontend:3000", "http://localhost:3001"],
+    allow_origins=["http://localhost:3000", "http://frontend:3000", "http://localhost:3001", "http://backend:8000"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -28,14 +27,16 @@ app.add_middleware(
 # Mount MCP server
 app.mount("/mcp", mcp_http_app)
 
-# Include chatbot routers
-app.include_router(auth_router)
-app.include_router(chat_router)
-app.include_router(health_router)
+
+@app.get("/health")
+async def health() -> PlainTextResponse:
+    """Health check endpoint."""
+    return PlainTextResponse("ok")
 
 
 @app.get("/healthz")
 async def healthz() -> PlainTextResponse:
+    """Health check endpoint (alternative)."""
     return PlainTextResponse("ok")
 
 
@@ -43,7 +44,7 @@ async def healthz() -> PlainTextResponse:
 async def root():
     """Root endpoint."""
     return {
-        "message": "Google News Trends MCP + Chatbot API",
+        "message": "Google News Trends MCP",
         "version": "1.0.0",
         "docs": "/docs",
         "mcp": "/mcp",
@@ -52,4 +53,5 @@ async def root():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    uvicorn.run(app, host="0.0.0.0", port=5000)
+
