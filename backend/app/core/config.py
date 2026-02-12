@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     debug: bool = False
     
-    # MCP Configuration
+    # MCP Configuration (not used - trends data is mocked)
     mcp_url: str = "http://mcp:5000"
     mcp_timeout: int = 10
     
