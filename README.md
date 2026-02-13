@@ -9,16 +9,17 @@ A full-stack LangChain ReAct chatbot with Google Trends MCP, Tavily web search, 
 │                        Docker Network                            │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                   │
-│  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐           │
-│  │   Frontend   │  │   Backend    │  │  Google      │           │
-│  │   (React)    │  │  (FastAPI)   │  │  Trends MCP  │           │
-│  │   :3000      │  │   :8000      │  │  :5000       │           │
-│  └──────────────┘  └──────────────┘  └──────────────┘           │
+│  ┌──────────────┐  ┌──────────────┐                               │
+│  │   Frontend   │  │   Backend    │                               │
+│  │   (React)    │  │  (FastAPI)   │                               │
+│  │   :3000      │  │   :8000      │                               │
+│  └──────────────┘  └──────────────┘                               │
 │         │                  │                                      │
 │         └──────────────────┼──────────────────┐                  │
 │                            │                  │                  │
 │                    ┌───────▼────────┐  ┌──────▼──────┐           │
-│                    │   Supabase     │  │   Tavily    │           │
+│                    │   Supabase     │  │   Tavily &&
+   │           │
 │                    │   (Auth + DB)  │  │   (External)│           │
 │                    └────────────────┘  └─────────────┘           │
 │                                                                   │
@@ -78,52 +79,52 @@ curl http://localhost:8000/health
 # Check frontend
 curl http://localhost:3000
 
-# Check MCP
-curl http://localhost:5000/health
-```
+
 
 ## Project Structure
 
 ```
+
 .
-├── frontend/                    # React TypeScript frontend
-│   ├── src/
-│   │   ├── api/                # API client
-│   │   ├── components/         # React components
-│   │   ├── pages/              # Page components
-│   │   ├── state/              # State management
-│   │   ├── types/              # TypeScript types
-│   │   └── utils/              # Utilities
-│   ├── Dockerfile
-│   ├── package.json
-│   └── .env.example
+├── frontend/ # React TypeScript frontend
+│ ├── src/
+│ │ ├── api/ # API client
+│ │ ├── components/ # React components
+│ │ ├── pages/ # Page components
+│ │ ├── state/ # State management
+│ │ ├── types/ # TypeScript types
+│ │ └── utils/ # Utilities
+│ ├── Dockerfile
+│ ├── package.json
+│ └── .env.example
 │
-├── backend/                     # FastAPI backend
-│   ├── app/
-│   │   ├── main.py             # FastAPI app
-│   │   ├── core/               # Core configuration
-│   │   ├── middleware/         # Middleware
-│   │   ├── routers/            # API routes
-│   │   │   ├── auth.py
-│   │   │   ├── chat.py
-│   │   │   └── health.py
-│   │   ├── schemas/            # Pydantic models
-│   │   ├── services/           # Business logic
-│   │   │   ├── agent/          # ReAct agent
-│   │   │   ├── tools/          # Tool wrappers
-│   │   │   │   ├── tavily.py
-│   │   │   │   └── google_trends_mcp.py
-│   │   │   └── db/             # Database service
-│   │   └── utils/              # Utilities
-│   ├── migrations/             # SQL migrations
-│   ├── Dockerfile
-│   ├── requirements.txt
-│   └── .env.example
+├── backend/ # FastAPI backend
+│ ├── app/
+│ │ ├── main.py # FastAPI app
+│ │ ├── core/ # Core configuration
+│ │ ├── middleware/ # Middleware
+│ │ ├── routers/ # API routes
+│ │ │ ├── auth.py
+│ │ │ ├── chat.py
+│ │ │ └── health.py
+│ │ ├── schemas/ # Pydantic models
+│ │ ├── services/ # Business logic
+│ │ │ ├── agent/ # ReAct agent
+│ │ │ ├── tools/ # Tool wrappers
+│ │ │ │ ├── tavily.py
+│ │ │ │ └── google_trends_mcp.py
+│ │ │ └── db/ # Database service
+│ │ └── utils/ # Utilities
+│ ├── migrations/ # SQL migrations
+│ ├── Dockerfile
+│ ├── requirements.txt
+│ └── .env.example
 │
-├── docker-compose.yml          # Docker Compose config
-├── .env.example                # Environment template
-└── README.md                   # This file
-```
+├── docker-compose.yml # Docker Compose config
+├── .env.example # Environment template
+└── README.md # This file
+
+````
 
 ## API Endpoints
 
@@ -145,16 +146,16 @@ curl http://localhost:5000/health
 
 ## Environment Variables
 
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SUPABASE_URL` | Supabase project URL | `https://project.supabase.co` |
-| `SUPABASE_KEY` | Supabase anon key | `eyJhbGc...` |
-| `SUPABASE_JWT_SECRET` | JWT secret for token validation | `super-secret-key` |
-| `TAVILY_API_KEY` | Tavily API key | `tvly-...` |
-| `MCP_URL` | Google Trends MCP URL | `http://mcp:5000` |
-| `REACT_APP_API_URL` | Backend API URL (frontend) | `http://localhost:8000` |
-| `ENVIRONMENT` | Environment (production/development) | `production` |
-| `LOG_LEVEL` | Logging level | `INFO` |
+| Variable              | Description                          | Example                       |
+| --------------------- | ------------------------------------ | ----------------------------- |
+| `SUPABASE_URL`        | Supabase project URL                 | `https://project.supabase.co` |
+| `SUPABASE_KEY`        | Supabase anon key                    | `eyJhbGc...`                  |
+| `SUPABASE_JWT_SECRET` | JWT secret for token validation      | `super-secret-key`            |
+| `TAVILY_API_KEY`      | Tavily API key                       | `tvly-...`                    |
+| `MCP_URL`             | Google Trends MCP URL                | `http://mcp:5000`             |
+| `REACT_APP_API_URL`   | Backend API URL (frontend)           | `http://localhost:8000`       |
+| `ENVIRONMENT`         | Environment (production/development) | `production`                  |
+| `LOG_LEVEL`           | Logging level                        | `INFO`                        |
 
 ## Testing
 
@@ -168,7 +169,7 @@ pytest tests/
 # Frontend tests
 cd ../frontend
 npm test
-```
+````
 
 ### Run Property-Based Tests
 
@@ -243,6 +244,7 @@ docker compose logs mcp
 ### Why SSE vs WebSocket?
 
 SSE (Server-Sent Events) is chosen for streaming because:
+
 - Simpler HTTP-based protocol
 - Built-in automatic reconnection
 - Sufficient for unidirectional (server → client) streaming
@@ -252,6 +254,7 @@ SSE (Server-Sent Events) is chosen for streaming because:
 ### Tool Selection Logic
 
 The ReAct agent uses intent classification to decide between tools:
+
 - **Trends queries** (keywords: trending, popular, viral) → Google Trends MCP
 - **Web queries** (current info, news, recent events) → Tavily Search
 - **General knowledge** → Direct LLM response
@@ -259,6 +262,7 @@ The ReAct agent uses intent classification to decide between tools:
 ### Data Isolation
 
 Supabase Row-Level Security (RLS) enforces user isolation at the database level:
+
 - All queries automatically filtered by `auth.uid()`
 - Users can only access their own conversations and messages
 - Application-level checks provide defense-in-depth

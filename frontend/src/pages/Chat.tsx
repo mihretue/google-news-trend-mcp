@@ -112,9 +112,15 @@ const Chat: React.FC = () => {
           });
         },
         (tool: string, status: string) => {
+          logger.info(`[TOOL CALLBACK] Tool: ${tool}, Status: ${status}`);
           if (status === 'started') {
-            setToolActivity(`Using ${tool}...`);
+            const toolName = tool === 'Tavily_Search' ? '🔍 Web Search' : 
+                           tool === 'Google_Trends_MCP' ? '📈 Google Trends' : 
+                           tool;
+            logger.info(`[TOOL DISPLAY] Setting tool activity to: ${toolName}`);
+            setToolActivity(toolName);
           } else if (status === 'completed') {
+            logger.info(`[TOOL DISPLAY] Clearing tool activity`);
             setToolActivity('');
           }
         },
@@ -170,7 +176,7 @@ const Chat: React.FC = () => {
           ))
         )}
         {loadingStatus && <div className="loading-status">⏳ {loadingStatus}</div>}
-        {toolActivity && <div className="tool-activity">🔧 {toolActivity}</div>}
+        {toolActivity && <div className="tool-activity">{toolActivity}</div>}
         <div ref={messagesEndRef} />
       </div>
 

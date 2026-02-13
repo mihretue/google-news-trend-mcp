@@ -1,19 +1,20 @@
 import logging
 from typing import Dict, Any
+from pytrends.request import TrendReq
 
 logger = logging.getLogger(__name__)
 
 
 class GoogleTrendsMCPTool:
-    """Wrapper for Google Trends data."""
+    """Wrapper for Google Trends data using pytrends."""
 
     def __init__(self):
         """Initialize Google Trends tool."""
-        pass
+        self.pytrends = TrendReq(hl='en-US', tz=360)
 
     async def get_trending_terms(self, geo: str = "US") -> Dict[str, Any]:
         """
-        Get trending terms.
+        Get trending terms from Google Trends.
         
         Args:
             geo: Geographic region (default: US)
@@ -24,27 +25,22 @@ class GoogleTrendsMCPTool:
         try:
             logger.info(f"Fetching trending terms for geo={geo}")
             
-            # Return sample trending data
-            sample_trends = [
-                {"keyword": "AI Agents", "volume": "1.2M"},
-                {"keyword": "LangChain", "volume": "850K"},
-                {"keyword": "ReAct Pattern", "volume": "620K"},
-                {"keyword": "Machine Learning", "volume": "2.1M"},
-                {"keyword": "Python Programming", "volume": "1.8M"},
-                {"keyword": "Web Development", "volume": "1.5M"},
-                {"keyword": "Cloud Computing", "volume": "1.3M"},
-                {"keyword": "Data Science", "volume": "1.1M"},
-                {"keyword": "DevOps", "volume": "950K"},
-                {"keyword": "API Design", "volume": "780K"},
+            # Get trending searches for the specified region
+            trending_searches = self.pytrends.trending_searches(pn=geo)
+            
+            # Convert to list of dictionaries
+            trends = [
+                {"keyword": keyword, "rank": idx + 1}
+                for idx, keyword in enumerate(trending_searches[0].values)
             ]
             
-            logger.info(f"Trending terms fetched successfully")
+            logger.info(f"Trending terms fetched successfully: {len(trends)} trends")
             
             return {
                 "success": True,
                 "geo": geo,
-                "trends": sample_trends,
-                "raw_response": sample_trends,
+                "trends": trends,
+                "raw_response": trending_searches,
             }
         except Exception as e:
             error_msg = str(e)
@@ -57,7 +53,7 @@ class GoogleTrendsMCPTool:
 
     async def get_news_by_keyword(self, keyword: str, max_results: int = 5) -> Dict[str, Any]:
         """
-        Get news articles by keyword.
+        Get news articles by keyword using Google Trends.
         
         Args:
             keyword: Search keyword
@@ -69,23 +65,20 @@ class GoogleTrendsMCPTool:
         try:
             logger.info(f"Fetching news for keyword={keyword}")
             
-            # Return sample news data
-            sample_articles = [
+            # Get related queries for the keyword
+            self.pytrends.build_payload([keyword], timeframe='today 1m')
+            related_queries = self.pytrends.related_queries()
+            
+            # Extract top queries
+            top_queries = related_queries.get(keyword, {}).get('top', [])
+            
+            articles = [
                 {
-                    "title": f"Latest developments in {keyword}",
-                    "url": f"https://example.com/news/{keyword.lower().replace(' ', '-')}",
-                    "summary": f"Recent updates and news about {keyword}."
-                },
-                {
-                    "title": f"{keyword} trends in 2026",
-                    "url": f"https://example.com/trends/{keyword.lower().replace(' ', '-')}",
-                    "summary": f"What's trending with {keyword} this year."
-                },
-                {
-                    "title": f"How to use {keyword}",
-                    "url": f"https://example.com/guide/{keyword.lower().replace(' ', '-')}",
-                    "summary": f"A comprehensive guide to {keyword}."
-                },
+                    "title": f"Trending: {query['query']}",
+                    "url": f"https://trends.google.com/trends/explore?q={query['query']}",
+                    "summary": f"Interest: {query['value']}"
+                }
+                for query in top_queries[:max_results]
             ]
             
             logger.info(f"News fetched successfully")
@@ -93,8 +86,8 @@ class GoogleTrendsMCPTool:
             return {
                 "success": True,
                 "keyword": keyword,
-                "articles": sample_articles[:max_results],
-                "raw_response": sample_articles,
+                "articles": articles,
+                "raw_response": related_queries,
             }
         except Exception as e:
             error_msg = str(e)
@@ -125,8 +118,8 @@ class GoogleTrendsMCPTool:
             for i, trend in enumerate(trends_result["trends"][:10], 1):
                 if isinstance(trend, dict):
                     keyword = trend.get("keyword", "No keyword")
-                    volume = trend.get("volume", "N/A")
-                    formatted += f"{i}. {keyword} (Volume: {volume})\n"
+                    rank = trend.get("rank", "N/A")
+                    formatted += f"{i}. {keyword} (Rank: {rank})\n"
                 else:
                     formatted += f"{i}. {trend}\n"
         else:
@@ -157,7 +150,7 @@ class GoogleTrendsMCPTool:
                     summary = article.get("summary", "")
                     formatted += f"{i}. {title}\n"
                     if summary:
-                        formatted += f"   Summary: {summary[:200]}...\n"
+                        formatted += f"   {summary}\n"
                     if url:
                         formatted += f"   URL: {url}\n"
                     formatted += "\n"
@@ -177,6 +170,8 @@ class GoogleTrendsMCPTool:
         """
         try:
             logger.info("Google Trends tool health check")
+            # Try to fetch trending searches to verify connectivity
+            self.pytrends.trending_searches(pn='US')
             return True
         except Exception as e:
             logger.warning(f"Health check failed: {str(e)}")

@@ -185,13 +185,13 @@ Tool names must be exactly: Tavily_Search or Google_Trends_MCP"""
                     logger.info(f"Tool action detected: {tool_name}")
                     
                     # Emit tool activity event
-                    tool_display_name = "Tavily Search" if tool_name == "Tavily_Search" else "Google Trends"
+                    tool_display_name = "Web Search" if tool_name == "Tavily_Search" else "Google Trends"
                     yield {
                         "event": "tool_activity",
                         "data": {
                             "tool": tool_name,
                             "status": "started",
-                            "message": f"Invoking {tool_display_name}..."
+                            "message": f"Using {tool_display_name}..."
                         }
                     }
                     

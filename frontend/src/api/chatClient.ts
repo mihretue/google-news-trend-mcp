@@ -252,6 +252,7 @@ class ChatClient {
                   logger.info(`[SSE] Streaming: ${data.status}`);
                   if (onLoading) onLoading(data.status);
                 } else if (eventType === 'tool_activity') {
+                  logger.info(`[SSE] Tool activity: ${dataStr}`);
                   onToolActivity(data.tool, data.status);
                 } else if (eventType === 'error') {
                   onError(data.error);
