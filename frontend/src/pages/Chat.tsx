@@ -20,6 +20,7 @@ const Chat: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadingStatus, setLoadingStatus] = useState('');
   const [toolActivity, setToolActivity] = useState<string>('');
+  const [selectedTool, setSelectedTool] = useState<string>('');
   const [error, setError] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -119,18 +120,28 @@ const Chat: React.FC = () => {
                            tool;
             logger.info(`[TOOL DISPLAY] Setting tool activity to: ${toolName}`);
             setToolActivity(toolName);
+            // Keep tool visible for at least 1 second
+            setTimeout(() => {
+              setToolActivity('');
+            }, 1000);
           } else if (status === 'completed') {
-            logger.info(`[TOOL DISPLAY] Clearing tool activity`);
-            setToolActivity('');
+            logger.info(`[TOOL DISPLAY] Tool completed`);
+            // Don't clear immediately, let the 1 second timeout handle it
           }
         },
         (error: string) => {
           setError(error);
           setToolActivity('');
+          setSelectedTool('');
           setLoadingStatus('');
         },
         (status: string) => {
           setLoadingStatus(status);
+        },
+        (tool: string, toolName: string) => {
+          logger.info(`[TOOL SELECTED] Tool: ${tool}, Display name: ${toolName}`);
+          const emoji = tool === 'Tavily_Search' ? '🔍' : '📈';
+          setSelectedTool(`${emoji} Selected: ${toolName}`);
         }
       );
 
@@ -142,6 +153,7 @@ const Chat: React.FC = () => {
       setMessages((prev) => prev.slice(0, -1));
     } finally {
       setLoading(false);
+      setSelectedTool('');
     }
   };
 
@@ -176,6 +188,7 @@ const Chat: React.FC = () => {
           ))
         )}
         {loadingStatus && <div className="loading-status">⏳ {loadingStatus}</div>}
+        {selectedTool && <div className="tool-activity">{selectedTool}</div>}
         {toolActivity && <div className="tool-activity">{toolActivity}</div>}
         <div ref={messagesEndRef} />
       </div>

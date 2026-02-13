@@ -184,8 +184,17 @@ Tool names must be exactly: Tavily_Search or Google_Trends_MCP"""
                     
                     logger.info(f"Tool action detected: {tool_name}")
                     
-                    # Emit tool activity event
+                    # Emit tool selected event (shows which tool was chosen)
                     tool_display_name = "Web Search" if tool_name == "Tavily_Search" else "Google Trends"
+                    yield {
+                        "event": "tool_selected",
+                        "data": {
+                            "tool": tool_name,
+                            "tool_name": tool_display_name
+                        }
+                    }
+                    
+                    # Emit tool activity event
                     yield {
                         "event": "tool_activity",
                         "data": {

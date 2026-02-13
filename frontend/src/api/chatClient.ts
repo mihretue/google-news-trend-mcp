@@ -153,7 +153,8 @@ class ChatClient {
     onToken: (token: string) => void,
     onToolActivity: (tool: string, status: string) => void,
     onError: (error: string) => void,
-    onLoading?: (status: string) => void
+    onLoading?: (status: string) => void,
+    onToolSelected?: (tool: string, toolName: string) => void
   ): Promise<void> {
     try {
       // Use fetch-based SSE connection with proper Authorization header
@@ -163,7 +164,8 @@ class ChatClient {
         onToken,
         onToolActivity,
         onError,
-        onLoading
+        onLoading,
+        onToolSelected
       );
     } catch (error) {
       logger.error('Failed to send message', error);
@@ -177,7 +179,8 @@ class ChatClient {
     onToken: (token: string) => void,
     onToolActivity: (tool: string, status: string) => void,
     onError: (error: string) => void,
-    onLoading?: (status: string) => void
+    onLoading?: (status: string) => void,
+    onToolSelected?: (tool: string, toolName: string) => void
   ): Promise<void> {
     try {
       const token = this.getToken();
@@ -251,6 +254,9 @@ class ChatClient {
                 } else if (eventType === 'streaming') {
                   logger.info(`[SSE] Streaming: ${data.status}`);
                   if (onLoading) onLoading(data.status);
+                } else if (eventType === 'tool_selected') {
+                  logger.info(`[SSE] Tool selected: ${dataStr}`);
+                  if (onToolSelected) onToolSelected(data.tool, data.tool_name);
                 } else if (eventType === 'tool_activity') {
                   logger.info(`[SSE] Tool activity: ${dataStr}`);
                   onToolActivity(data.tool, data.status);
